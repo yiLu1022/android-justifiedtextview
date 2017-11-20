@@ -6,15 +6,15 @@ import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.widget.TextView;
 
 /**
- * Created by ccheng on 3/18/14.
+ * JustifyTextView is designed to justify the text in the discover screen.
+ * For the moment, it doesn't support Spannable type
  */
 public class JustifyTextView extends TextView {
 
-    private int mLineY;
+    private int baseLineY;
     private int mViewWidth;
 
     public JustifyTextView(Context context, AttributeSet attrs) {
@@ -33,33 +33,33 @@ public class JustifyTextView extends TextView {
         paint.setColor(getCurrentTextColor());
         paint.drawableState = getDrawableState();
 
-        //被父控件measure后的宽度
+        //the width which measured by the parent view
         mViewWidth = getMeasuredWidth();
 
 
         String text = (String) getText();
-        mLineY = 0;
-        mLineY += getTextSize() * 1.5;
+        baseLineY = 0;
+        baseLineY += getTextSize();
 
         Layout layout = getLayout();
         for (int i = 0; i < layout.getLineCount(); i++) {
-            //获取本行的起始index和结束index,将本行的字符串截取下来。
+            //Gets the start index and end index of the current line and cut it.
             int lineStart = layout.getLineStart(i);
             int lineEnd = layout.getLineEnd(i);
             String line = text.substring(lineStart, lineEnd);
 
             //StaticLayout is a Layout for text that will not be edited after it is laid out. Use DynamicLayout for text that may change.
-            //获取每一行文本的宽度
+            //Get the width of every line
             float width = StaticLayout.getDesiredWidth(text, lineStart, lineEnd, getPaint());
 
-            //如果该行需要扩展，且不是最后一行。
-            if (needScale(line) && i < layout.getLineCount() -1) {
+            //Do not scale the last line and the line which has 0 length
+            if (needScale(line) && i < layout.getLineCount() - 1) {
                 drawScaledText(canvas, lineStart, line, width);
             } else {
-                canvas.drawText(line, 0, mLineY, paint);
+                canvas.drawText(line, 0, baseLineY, paint);
             }
 
-            mLineY += getLineHeight();
+            baseLineY += getLineHeight();
         }
     }
 
@@ -75,25 +75,23 @@ public class JustifyTextView extends TextView {
         float currentLeftX = 0;
         if (isFirstLineOfParagraph(lineStart, line)) {
             String blanks = "  ";
-            //drawText 方法的第二个参数代表该行最左侧的x坐标
-            //第三个参数代表该行baseline的y坐标
-            canvas.drawText(blanks, currentLeftX, mLineY, getPaint());
+            //The second parameter represents the most left X of this string
+            //The third parameter represents the baseline of this string
+            canvas.drawText(blanks, currentLeftX, baseLineY, getPaint());
             float bw = StaticLayout.getDesiredWidth(blanks, getPaint());
             currentLeftX += bw;
 
             line = line.substring(3);
         }
-
-        //通过行尾剩余空间计算得出字与字间应该多填充多少空间
-        float scaleWidth = (mViewWidth - lineWidth) / line.length() - 1;
-
-        Log.e("lineSpace",String.valueOf(scaleWidth));
-        //在当前行中逐字绘制
+        //Calculate the space between each two chars according to the space left at the end of
+        // the line
+        float scaleWidth = (mViewWidth - lineWidth) / (line.length() - 1);
+        //draw the current line char by char
         for (int i = 0; i < line.length(); i++) {
             String c = String.valueOf(line.charAt(i));
             //get the desired width of every char
             float charWidth = StaticLayout.getDesiredWidth(c, getPaint());
-            canvas.drawText(c, currentLeftX, mLineY, getPaint());
+            canvas.drawText(c, currentLeftX, baseLineY, getPaint());
             currentLeftX += charWidth + scaleWidth;
         }
     }
